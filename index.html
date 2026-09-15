@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ink Stories</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Work+Sans:wght@400;500;600;700&display=swap">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: oklch(9% 0.006 40);
+    --paper-deep: oklch(16% 0.012 40);
+    --ink: oklch(96% 0.004 60);
+    --ink-muted: oklch(68% 0.012 60);
+    --accent: oklch(58% 0.18 35);
+    --accent-deep: oklch(46% 0.18 35);
+    --line: oklch(30% 0.015 60);
+    --error: oklch(62% 0.17 25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Work Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    position: relative;
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .texture {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(var(--paper-deep) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .serif { font-family: 'Libre Caslon Display', Georgia, serif; }
+
+  .screen {
+    display: none;
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    flex-direction: column;
+    padding: 36px 28px 26px;
+  }
+  .screen.active { display: flex; }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+  .brand svg { flex-shrink: 0; }
+  .brand span { font-size: 12px; font-weight: 600; }
+
+  .divider { display: flex; justify-content: center; margin-top: 44px; flex-shrink: 0; }
+
+  .headline {
+    margin-top: 20px;
+    font-size: 30px;
+    line-height: 1.15;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .subtext {
+    margin-top: 14px;
+    font-size: 15px;
+    line-height: 1.55;
+    text-align: center;
+    color: var(--ink-muted);
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
+  }
+
+  .spacer { flex: 1; }
+  .spacer-sm { flex: 0.6; }
+
+  .btn-primary {
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:active:not(:disabled) { background: var(--accent-deep); }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .circle-btn {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 0 10px 26px oklch(58% 0.18 35 / 0.4);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .circle-btn.recording {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 10px 26px oklch(58% 0.18 35 / 0.4), 0 0 0 0 oklch(58% 0.18 35 / 0.5); }
+    50% { box-shadow: 0 10px 26px oklch(58% 0.18 35 / 0.4), 0 0 0 14px oklch(58% 0.18 35 / 0); }
+  }
+
+  .caption { margin-top: 14px; font-size: 13px; text-align: center; color: var(--ink-muted); flex-shrink: 0; }
+  .timer { margin-top: 14px; font-size: 20px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  .step-dots { display: flex; justify-content: center; gap: 8px; flex-shrink: 0; }
+  .step-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--paper-deep); border: 1px solid var(--line); }
+  .step-dots span.on { background: var(--accent); border: none; }
+  .footnote { margin-top: 12px; font-size: 11px; text-align: center; color: var(--ink-muted); opacity: 0.85; flex-shrink: 0; }
+
+  .photo-preview-wrap { text-align: center; flex-shrink: 0; }
+  .photo-preview-wrap img {
+    width: 220px;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+  }
+
+  .audio-card {
+    background: var(--paper-deep);
+    border-radius: 16px;
+    padding: 22px 20px;
+    margin-top: 28px;
+    flex-shrink: 0;
+  }
+  .audio-card-label { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; color: var(--ink-muted); }
+  .audio-card-label span { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+  .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 44px; margin-bottom: 18px; }
+  .waveform span { width: 3px; background: var(--accent); border-radius: 2px; }
+  .audio-controls-row { display: flex; align-items: center; justify-content: space-between; }
+  .audio-controls-left { display: flex; align-items: center; gap: 10px; }
+  .play-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--accent);
+    background: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .play-btn svg { fill: var(--accent); }
+  .duration { font-size: 13px; color: var(--ink-muted); }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-muted); font-weight: 600; margin-bottom: 6px; }
+  .field input {
+    width: 100%; border: none; border-bottom: 1.5px solid var(--line); background: none;
+    padding-bottom: 7px; font-size: 14px; color: var(--ink); font-family: inherit;
+  }
+  .field input::placeholder { color: var(--ink-muted); opacity: 0.6; }
+  .field input:focus { outline: none; border-bottom-color: var(--accent); }
+  .field-hint { margin-top: 10px; font-size: 11.5px; color: var(--ink-muted); opacity: 0.85; }
+  .field-error { margin-top: 10px; font-size: 12.5px; color: var(--error); display: none; }
+  .field-error.show { display: block; }
+
+  .consent-label { margin-top: 20px; font-size: 12.5px; color: var(--ink-muted); font-weight: 600; }
+  .consent-option {
+    margin-top: 10px; display: flex; gap: 12px; align-items: flex-start;
+    border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer;
+  }
+  .consent-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .consent-option svg { flex-shrink: 0; margin-top: 2px; stroke: var(--ink-muted); }
+  .consent-option .title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .consent-option .desc { font-size: 12.5px; color: var(--ink-muted); margin-top: 3px; line-height: 1.4; }
+  .consent-option.selected {
+    border: 2px solid var(--accent); background: oklch(22% 0.05 35); padding: 13px;
+  }
+  .consent-option.selected svg { stroke: var(--accent); }
+
+  .submit-error { margin-top: 14px; font-size: 13px; color: var(--error); text-align: center; display: none; }
+  .submit-error.show { display: block; }
+
+  .check-circle {
+    width: 72px; height: 72px; border-radius: 50%; border: 1.5px solid var(--accent);
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="texture"></div>
+
+  <!-- Intro -->
+  <section id="screen-intro" class="screen active">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8.5C4 7.67 4.67 7 5.5 7H8l1.2-1.8c.2-.3.5-.5.9-.5h4.8c.4 0 .7.2.9.5L17 7h2.5c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 19 3 18.33 3 17.5v-9z"/>
+        <circle cx="12" cy="13" r="3.4"/>
+      </svg>
+      <span>@inkstories</span>
+    </div>
+    <div class="divider">
+      <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+        <path d="M2 6h14M24 6h14" stroke="var(--accent)" stroke-width="1.5"/>
+        <circle cx="20" cy="6" r="2" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div class="spacer-sm"></div>
+    <div class="headline serif" style="font-size:34px;">Ink tells stories</div>
+    <div class="subtext" style="max-width:300px;">@inkstories is a research project on tattoos, and the stories behind where they come from and how they're made.<br><br><b>Do you have one you'd like to share?</b></div>
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-intro-next">Let's go</button>
+  </section>
+
+  <!-- Photo -->
+  <section id="screen-photo" class="screen">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8.5C4 7.67 4.67 7 5.5 7H8l1.2-1.8c.2-.3.5-.5.9-.5h4.8c.4 0 .7.2.9.5L17 7h2.5c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 19 3 18.33 3 17.5v-9z"/>
+        <circle cx="12" cy="13" r="3.4"/>
+      </svg>
+      <span>@inkstories</span>
+    </div>
+    <div class="divider">
+      <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+        <path d="M2 6h14M24 6h14" stroke="var(--accent)" stroke-width="1.5"/>
+        <circle cx="20" cy="6" r="2" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div class="headline serif">Snap your tat</div>
+    <div class="subtext">First, take a picture of a tattoo that means something to you.</div>
+    <div class="spacer"></div>
+
+    <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none">
+
+    <div id="photo-capture-ui">
+      <button class="circle-btn" id="btn-open-camera" aria-label="Open camera">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8.5C4 7.67 4.67 7 5.5 7H8l1.2-1.8c.2-.3.5-.5.9-.5h4.8c.4 0 .7.2.9.5L17 7h2.5c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 19 3 18.33 3 17.5v-9z"/>
+          <circle cx="12" cy="13" r="3.4"/>
+        </svg>
+      </button>
+      <div class="caption">Tap to open your camera</div>
+    </div>
+
+    <div id="photo-preview-ui" style="display:none;">
+      <div class="photo-preview-wrap">
+        <img id="photo-preview-img" alt="Your tattoo photo">
+      </div>
+      <div class="caption"><button class="link-btn" id="btn-retake">Retake</button></div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-photo-next" style="display:none; margin-bottom:20px;">Continue</button>
+
+    <div class="step-dots"><span class="on"></span><span></span><span></span></div>
+    <div class="footnote">Nothing is posted without your OK</div>
+  </section>
+
+  <!-- Audio -->
+  <section id="screen-audio" class="screen">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8.5C4 7.67 4.67 7 5.5 7H8l1.2-1.8c.2-.3.5-.5.9-.5h4.8c.4 0 .7.2.9.5L17 7h2.5c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 19 3 18.33 3 17.5v-9z"/>
+        <circle cx="12" cy="13" r="3.4"/>
+      </svg>
+      <span>@inkstories</span>
+    </div>
+    <div class="divider">
+      <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+        <path d="M2 6h14M24 6h14" stroke="var(--accent)" stroke-width="1.5"/>
+        <circle cx="20" cy="6" r="2" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div class="headline serif">Tell the story</div>
+    <div class="subtext">What does it mean? How did you get it? Take a minute or two to explain.</div>
+    <div class="spacer"></div>
+
+    <div id="audio-unsupported" style="display:none; text-align:center; color:var(--error); font-size:14px; line-height:1.5;">
+      Audio recording isn't supported in this browser. Try Chrome, or a recent version of Safari.
+    </div>
+
+    <div id="audio-idle-ui">
+      <button class="circle-btn" id="btn-start-record" aria-label="Start recording">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="3" width="6" height="11" rx="3"/>
+          <path d="M5 11a7 7 0 0014 0M12 18v3"/>
+        </svg>
+      </button>
+      <div class="caption">Tap to record</div>
+    </div>
+
+    <div id="audio-recording-ui" style="display:none;">
+      <button class="circle-btn recording" id="btn-stop-record" aria-label="Stop recording">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+      <div class="timer" id="record-timer">0:00</div>
+    </div>
+
+    <div id="audio-review-ui" style="display:none;">
+      <div class="audio-card">
+        <div class="audio-card-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3"/>
+            <path d="M5 11a7 7 0 0014 0M12 18v3"/>
+          </svg>
+          <span>Your story</span>
+        </div>
+        <div class="waveform" id="waveform"></div>
+        <div class="audio-controls-row">
+          <div class="audio-controls-left">
+            <button class="play-btn" id="btn-play-audio" aria-label="Play">
+              <svg id="play-icon" viewBox="0 0 24 24" width="14" height="14"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <span class="duration" id="audio-duration">0:00</span>
+          </div>
+          <button class="link-btn" id="btn-rerecord">Re-record</button>
+        </div>
+      </div>
+      <audio id="audio-player" style="display:none;"></audio>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-audio-next" style="display:none; margin-bottom:20px;">Continue</button>
+    <div class="step-dots"><span></span><span class="on"></span><span></span></div>
+  </section>
+
+  <!-- Contact + consent -->
+  <section id="screen-contact" class="screen">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8.5C4 7.67 4.67 7 5.5 7H8l1.2-1.8c.2-.3.5-.5.9-.5h4.8c.4 0 .7.2.9.5L17 7h2.5c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 19 3 18.33 3 17.5v-9z"/>
+        <circle cx="12" cy="13" r="3.4"/>
+      </svg>
+      <span>@inkstories</span>
+    </div>
+    <div class="divider">
+      <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+        <path d="M2 6h14M24 6h14" stroke="var(--accent)" stroke-width="1.5"/>
+        <circle cx="20" cy="6" r="2" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div class="headline serif" style="font-size:26px;">One last thing</div>
+    <div class="subtext" style="margin-top:10px;">Please leave at least one <br>contact detail.</div>
+
+    <div style="margin-top:22px;">
+      <div class="field">
+        <label for="input-phone">Phone number</label>
+        <input type="tel" id="input-phone" placeholder="(555) 012-3456" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="input-email">Email</label>
+        <input type="email" id="input-email" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="input-instagram">Instagram</label>
+        <input type="text" id="input-instagram" placeholder="@yourhandle" autocomplete="off">
+      </div>
+      <div class="field-hint">At least one is required.</div>
+      <div class="field-error" id="contact-error">Please leave at least one contact detail so we can reach you.</div>
+    </div>
+
+    <div class="consent-label">If we love it, can we share it?</div>
+    <div role="radiogroup" aria-label="Sharing preference">
+      <label class="consent-option selected" id="consent-private-label">
+        <input type="radio" name="consent" value="private" id="consent-private" checked>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="18" height="13" rx="2"/>
+          <path d="M3 7l9 6 9-6"/>
+        </svg>
+        <div>
+          <div class="title">Keep this between us</div>
+          <div class="desc">Your story stays private: nothing is posted.</div>
+        </div>
+      </label>
+      <label class="consent-option" id="consent-feature-label">
+        <input type="radio" name="consent" value="feature" id="consent-feature">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/>
+        </svg>
+        <div>
+          <div class="title">I'm interested in featuring</div>
+          <div class="desc">I'll reach out to you about posting your story – no pressure either way.</div>
+        </div>
+      </label>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-submit">Share my story</button>
+    <div class="submit-error" id="submit-error"></div>
+    <div class="step-dots" style="margin-top:16px;"><span></span><span></span><span class="on"></span></div>
+  </section>
+
+  <!-- Thank you -->
+  <section id="screen-thanks" class="screen">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1;">
+      <div class="check-circle">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div class="divider" style="margin-top:0; margin-bottom:16px;">
+        <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+          <path d="M2 6h14M24 6h14" stroke="var(--accent)" stroke-width="1.5"/>
+          <circle cx="20" cy="6" r="2" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div class="headline serif" style="margin-top:0; font-size:30px;">Thanks for sharing!</div>
+      <div class="subtext" style="max-width:260px;">Check out my project <span style="color:var(--accent); font-weight:600;">@inkstories</span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // ---- Supabase setup ----
+  // Fill these in after creating your Supabase project — see README.md.
+  const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  let supabaseClient = null;
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.warn('Supabase is not configured yet — fill in SUPABASE_URL / SUPABASE_ANON_KEY. See README.md.', e);
+  }
+
+  // ---- Screen navigation ----
+  const screens = ['screen-intro', 'screen-photo', 'screen-audio', 'screen-contact', 'screen-thanks'];
+  function goTo(id) {
+    screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('btn-intro-next').addEventListener('click', () => goTo('screen-photo'));
+
+  // ---- Photo capture ----
+  let photoFile = null;
+  const photoInput = document.getElementById('photo-input');
+  const photoCaptureUI = document.getElementById('photo-capture-ui');
+  const photoPreviewUI = document.getElementById('photo-preview-ui');
+  const photoPreviewImg = document.getElementById('photo-preview-img');
+  const btnPhotoNext = document.getElementById('btn-photo-next');
+
+  document.getElementById('btn-open-camera').addEventListener('click', () => photoInput.click());
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files && photoInput.files[0];
+    if (!file) return;
+    photoFile = file;
+    photoPreviewImg.src = URL.createObjectURL(file);
+    photoCaptureUI.style.display = 'none';
+    photoPreviewUI.style.display = 'block';
+    btnPhotoNext.style.display = 'flex';
+  });
+
+  document.getElementById('btn-retake').addEventListener('click', () => {
+    photoFile = null;
+    photoInput.value = '';
+    photoCaptureUI.style.display = 'block';
+    photoPreviewUI.style.display = 'none';
+    btnPhotoNext.style.display = 'none';
+  });
+
+  btnPhotoNext.addEventListener('click', () => goTo('screen-audio'));
+
+  // ---- Audio recording ----
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let audioBlob = null;
+  let audioMimeType = '';
+  let recordSeconds = 0;
+  let recordTimerHandle = null;
+
+  const audioIdleUI = document.getElementById('audio-idle-ui');
+  const audioRecordingUI = document.getElementById('audio-recording-ui');
+  const audioReviewUI = document.getElementById('audio-review-ui');
+  const audioUnsupported = document.getElementById('audio-unsupported');
+  const btnAudioNext = document.getElementById('btn-audio-next');
+  const audioPlayer = document.getElementById('audio-player');
+  const playIcon = document.getElementById('play-icon');
+  const audioDurationEl = document.getElementById('audio-duration');
+
+  function pickAudioMime() {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/mp4;codecs=mp4a.40.2'];
+    for (const c of candidates) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  }
+
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = Math.floor(totalSeconds % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function buildWaveform() {
+    const wf = document.getElementById('waveform');
+    wf.innerHTML = '';
+    const heights = [12, 22, 32, 16, 38, 24, 14, 30, 20, 34, 18, 12];
+    heights.forEach(h => {
+      const bar = document.createElement('span');
+      bar.style.height = h + 'px';
+      wf.appendChild(bar);
+    });
+  }
+
+  if (!window.MediaRecorder || !navigator.mediaDevices) {
+    audioIdleUI.style.display = 'none';
+    audioUnsupported.style.display = 'block';
+  } else {
+    document.getElementById('btn-start-record').addEventListener('click', startRecording);
+    document.getElementById('btn-stop-record').addEventListener('click', stopRecording);
+    document.getElementById('btn-rerecord').addEventListener('click', () => {
+      audioBlob = null;
+      audioReviewUI.style.display = 'none';
+      btnAudioNext.style.display = 'none';
+      audioIdleUI.style.display = 'block';
+    });
+    document.getElementById('btn-play-audio').addEventListener('click', togglePlayback);
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioMimeType = pickAudioMime();
+      mediaRecorder = audioMimeType ? new MediaRecorder(stream, { mimeType: audioMimeType }) : new MediaRecorder(stream);
+      recordedChunks = [];
+      mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) recordedChunks.push(e.data); });
+      mediaRecorder.addEventListener('stop', () => {
+        stream.getTracks().forEach(t => t.stop());
+        audioBlob = new Blob(recordedChunks, { type: audioMimeType || 'audio/webm' });
+        audioPlayer.src = URL.createObjectURL(audioBlob);
+        buildWaveform();
+        audioDurationEl.textContent = formatTime(recordSeconds);
+        audioRecordingUI.style.display = 'none';
+        audioReviewUI.style.display = 'block';
+        btnAudioNext.style.display = 'flex';
+      });
+      mediaRecorder.start();
+      recordSeconds = 0;
+      document.getElementById('record-timer').textContent = '0:00';
+      recordTimerHandle = setInterval(() => {
+        recordSeconds += 1;
+        document.getElementById('record-timer').textContent = formatTime(recordSeconds);
+      }, 1000);
+      audioIdleUI.style.display = 'none';
+      audioRecordingUI.style.display = 'block';
+    } catch (err) {
+      alert("We couldn't access your microphone. Please allow microphone access and try again.");
+    }
+  }
+
+  function stopRecording() {
+    if (recordTimerHandle) clearInterval(recordTimerHandle);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  }
+
+  let isPlaying = false;
+  function togglePlayback() {
+    if (isPlaying) {
+      audioPlayer.pause();
+    } else {
+      audioPlayer.play();
+    }
+  }
+  audioPlayer.addEventListener('play', () => {
+    isPlaying = true;
+    playIcon.innerHTML = '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
+  });
+  audioPlayer.addEventListener('pause', resetPlayIcon);
+  audioPlayer.addEventListener('ended', resetPlayIcon);
+  function resetPlayIcon() {
+    isPlaying = false;
+    playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+  }
+
+  btnAudioNext.addEventListener('click', () => goTo('screen-contact'));
+
+  // ---- Contact + consent ----
+  const consentPrivateLabel = document.getElementById('consent-private-label');
+  const consentFeatureLabel = document.getElementById('consent-feature-label');
+  const consentPrivate = document.getElementById('consent-private');
+  const consentFeature = document.getElementById('consent-feature');
+
+  function refreshConsentUI() {
+    consentPrivateLabel.classList.toggle('selected', consentPrivate.checked);
+    consentFeatureLabel.classList.toggle('selected', consentFeature.checked);
+  }
+  consentPrivate.addEventListener('change', refreshConsentUI);
+  consentFeature.addEventListener('change', refreshConsentUI);
+
+  const contactError = document.getElementById('contact-error');
+  const submitError = document.getElementById('submit-error');
+  const btnSubmit = document.getElementById('btn-submit');
+
+  function fileExtension(mimeType, fallback) {
+    if (mimeType.includes('mp4')) return 'm4a';
+    if (mimeType.includes('webm')) return 'webm';
+    return fallback;
+  }
+
+  btnSubmit.addEventListener('click', async () => {
+    const phone = document.getElementById('input-phone').value.trim();
+    const email = document.getElementById('input-email').value.trim();
+    const instagram = document.getElementById('input-instagram').value.trim();
+    submitError.classList.remove('show');
+    contactError.classList.remove('show');
+
+    if (!phone && !email && !instagram) {
+      contactError.classList.add('show');
+      return;
+    }
+    if (!photoFile || !audioBlob) {
+      submitError.textContent = "Something's missing — go back and check your photo and recording.";
+      submitError.classList.add('show');
+      return;
+    }
+    if (!supabaseClient) {
+      submitError.textContent = "This app isn't connected to Supabase yet — see README.md.";
+      submitError.classList.add('show');
+      return;
+    }
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Sharing…';
+
+    try {
+      const uploadId = crypto.randomUUID();
+      const photoExt = (photoFile.type && photoFile.type.split('/')[1]) || 'jpg';
+      const audioExt = fileExtension(audioMimeType, 'webm');
+      const photoPath = `photos/${uploadId}.${photoExt}`;
+      const audioPath = `audio/${uploadId}.${audioExt}`;
+
+      const { error: photoErr } = await supabaseClient.storage.from('submissions').upload(photoPath, photoFile);
+      if (photoErr) throw photoErr;
+
+      const { error: audioErr } = await supabaseClient.storage.from('submissions').upload(audioPath, audioBlob, {
+        contentType: audioMimeType || 'audio/webm',
+      });
+      if (audioErr) throw audioErr;
+
+      const { error: insertErr } = await supabaseClient.from('submissions').insert([{
+        photo_path: photoPath,
+        audio_path: audioPath,
+        phone: phone || null,
+        email: email || null,
+        instagram: instagram || null,
+        consent: consentFeature.checked ? 'feature' : 'private',
+      }]);
+      if (insertErr) throw insertErr;
+
+      goTo('screen-thanks');
+    } catch (err) {
+      console.error(err);
+      submitError.textContent = "Something went wrong sending your story. Please try again.";
+      submitError.classList.add('show');
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Share my story';
+    }
+  });
+</script>
+</body>
+</html>
