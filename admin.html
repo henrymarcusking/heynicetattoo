@@ -243,6 +243,13 @@
     });
   });
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(str) {
+    return escapeHtml(str);
+  }
+
   function timeAgo(iso) {
     const diffMs = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diffMs / 60000);
@@ -332,11 +339,14 @@
     ]);
 
     const contactRows = [];
-    if (row.phone) contactRows.push(`<div class="contact-row"><a class="val" href="tel:${row.phone}">${row.phone}</a><button class="copy-btn" data-copy="${row.phone}">Copy</button></div>`);
-    if (row.email) contactRows.push(`<div class="contact-row"><a class="val" href="mailto:${row.email}">${row.email}</a><button class="copy-btn" data-copy="${row.email}">Copy</button></div>`);
+    if (row.phone) contactRows.push(`<div class="contact-row"><a class="val" href="tel:${escapeAttr(row.phone)}">${escapeHtml(row.phone)}</a><button class="copy-btn" data-copy="${escapeAttr(row.phone)}">Copy</button></div>`);
+    if (row.email) contactRows.push(`<div class="contact-row"><a class="val" href="mailto:${escapeAttr(row.email)}">${escapeHtml(row.email)}</a><button class="copy-btn" data-copy="${escapeAttr(row.email)}">Copy</button></div>`);
     if (row.instagram) {
       const handle = row.instagram.replace(/^@/, '');
-      contactRows.push(`<div class="contact-row"><a class="val" href="https://instagram.com/${handle}" target="_blank" rel="noopener">${row.instagram}</a><button class="copy-btn" data-copy="${row.instagram}">Copy</button></div>`);
+      contactRows.push(`<div class="contact-row"><a class="val" href="https://instagram.com/${escapeAttr(handle)}" target="_blank" rel="noopener">${escapeHtml(row.instagram)}</a><button class="copy-btn" data-copy="${escapeAttr(row.instagram)}">Copy</button></div>`);
+    }
+    if (row.found_location) {
+      contactRows.push(`<div class="contact-row"><span class="val" style="color:var(--muted); font-size:12px;">Found via</span><span class="val" style="flex:2; text-align:right;">${escapeHtml(row.found_location)}</span></div>`);
     }
 
     const isFeature = row.consent === 'feature';

@@ -387,6 +387,11 @@
       <div class="field-error" id="contact-error">Please leave at least one contact detail so we can reach you.</div>
     </form>
 
+    <div class="field" style="margin-top:18px;">
+      <label for="input-location">Where did you find this sticker?</label>
+      <input type="text" id="input-location" name="sticker-location" placeholder="A bar? A friend? Somewhere else?" autocomplete="off">
+    </div>
+
     <div class="consent-label">If we love it, can we share it?</div>
     <div role="radiogroup" aria-label="Sharing preference">
       <label class="consent-option selected" id="consent-private-label">
@@ -628,6 +633,7 @@
     const phone = document.getElementById('input-phone').value.trim();
     const email = document.getElementById('input-email').value.trim();
     const instagram = document.getElementById('input-instagram').value.trim();
+    const stickerLocation = document.getElementById('input-location').value.trim();
     submitError.classList.remove('show');
     contactError.classList.remove('show');
 
@@ -670,6 +676,7 @@
         phone: phone || null,
         email: email || null,
         instagram: instagram || null,
+        found_location: stickerLocation || null,
         consent: consentFeature.checked ? 'feature' : 'private',
       }]);
       if (insertErr) throw insertErr;
