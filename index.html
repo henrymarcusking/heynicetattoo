@@ -370,22 +370,22 @@
     <div class="headline serif" style="font-size:26px;">One last thing</div>
     <div class="subtext" style="margin-top:10px;">Please leave at least one <br>contact detail.</div>
 
-    <div style="margin-top:22px;">
+    <form id="contact-fields" style="margin-top:22px;" novalidate onsubmit="return false;">
       <div class="field">
         <label for="input-phone">Phone number</label>
-        <input type="tel" id="input-phone" placeholder="(555) 012-3456" autocomplete="tel">
+        <input type="tel" id="input-phone" name="tel" placeholder="(555) 012-3456" autocomplete="tel">
       </div>
       <div class="field">
         <label for="input-email">Email</label>
-        <input type="email" id="input-email" placeholder="you@email.com" autocomplete="email">
+        <input type="email" id="input-email" name="email" placeholder="you@email.com" autocomplete="email">
       </div>
       <div class="field" style="margin-bottom:0;">
         <label for="input-instagram">Instagram</label>
-        <input type="text" id="input-instagram" placeholder="@yourhandle" autocomplete="off">
+        <input type="text" id="input-instagram" name="instagram" placeholder="@yourhandle" autocomplete="off">
       </div>
       <div class="field-hint">At least one is required.</div>
       <div class="field-error" id="contact-error">Please leave at least one contact detail so we can reach you.</div>
-    </div>
+    </form>
 
     <div class="consent-label">If we love it, can we share it?</div>
     <div role="radiogroup" aria-label="Sharing preference">
