@@ -75,3 +75,14 @@ on modern Chrome and Safari (including iOS Safari) but can be flaky on older
 or unusual browsers — the app shows a plain error message rather than a
 broken recorder if it isn't available. There's no live audio-reactive
 waveform; the bars shown after recording are decorative.
+
+## Attribution
+
+The background flash-art motifs (swallow, anchor, rose, dagger) come from
+[game-icons.net](https://game-icons.net/), licensed under
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/):
+
+- Swallow by [Delapouite](https://delapouite.com/)
+- Anchor, Rose, and Plain Dagger by [Lorc](https://lorcblog.blogspot.com/)
+
+The heart and star motifs are original to this project.
