@@ -68,6 +68,40 @@ featured, that's still just their expressed interest: reach out to them
 directly (using the phone/email/Instagram handle they left) and get an
 explicit yes before posting their story anywhere.
 
+## Email notification on new submissions
+
+`supabase/functions/notify-new-submission/index.ts` sends a plain notice
+(no personal details — just "a story came in, go check the queue") to
+`heynicetattoo@gmail.com` every time someone submits. It's deployed as a
+Supabase Edge Function, triggered by a Database Webhook, and sends through
+[Resend](https://resend.com) (free tier: 3,000 emails/month, plenty for this).
+
+1. **Create a Resend account** at [resend.com](https://resend.com) and
+   generate an API key (**API Keys → Create API Key**). No domain
+   verification needed to start — the function sends from Resend's shared
+   `onboarding@resend.dev` address, which works fine for an internal
+   notification. (You can verify your own domain in Resend later for a
+   branded "from" address, if you want.)
+
+2. **Add the key as a Supabase secret.** In your Supabase project, go to
+   **Edge Functions → Manage secrets** (exact wording may vary slightly —
+   look under Edge Functions or Settings) and add:
+
+   ```
+   RESEND_API_KEY = <your Resend API key>
+   ```
+
+3. **Create the function.** Go to **Edge Functions → Create a function**,
+   name it `notify-new-submission`, and paste in the contents of
+   `supabase/functions/notify-new-submission/index.ts`.
+
+4. **Wire up the trigger.** Go to **Database → Webhooks → Create a new
+   webhook**: table `submissions`, event `Insert`, type "Supabase Edge
+   Function", target the `notify-new-submission` function you just created.
+
+That's it — every new submission (regardless of what contact details or
+consent choice someone left) triggers one email to `heynicetattoo@gmail.com`.
+
 ## Notes on the audio recording
 
 Recording uses the browser's `MediaRecorder` API, which is broadly supported
