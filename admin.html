@@ -224,7 +224,7 @@
     btn.disabled = false;
     btn.textContent = 'Sign in';
     if (error) {
-      errEl.textContent = 'Wrong email or password.';
+      errEl.textContent = error.message || 'Wrong email or password.';
       errEl.classList.add('show');
       return;
     }
