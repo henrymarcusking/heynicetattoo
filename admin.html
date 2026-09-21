@@ -99,6 +99,13 @@
   .consent-banner.feature { background: var(--blue-tint); }
   .consent-banner.private { background: var(--chip-bg); }
   .consent-banner .label { font-size: 13.5px; font-weight: 600; }
+
+  .btn-transcribe { height: 38px; padding: 0 16px; background: var(--blue-tint); color: var(--blue); }
+  .btn-transcribe:disabled { opacity: 0.6; cursor: not-allowed; }
+  .transcribe-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .transcript-en { font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
+  .transcript-original-label { margin-top: 14px; }
+  .transcript-original-text { font-size: 13px; line-height: 1.6; color: var(--muted); white-space: pre-wrap; margin-top: 6px; }
   .consent-help { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 8px; }
   .action-bar { height: 72px; flex-shrink: 0; padding: 14px 20px; display: flex; gap: 12px; border-top: 1px solid var(--border); background: var(--surface); }
   .action-bar .btn { flex: 1; }
@@ -324,6 +331,43 @@
     loadList();
   });
 
+  function transcriptCardHtml(row) {
+    if (row.transcript_en) {
+      const showOriginal = row.transcript && row.transcript.trim() !== row.transcript_en.trim();
+      return `
+        <div class="transcript-en">${escapeHtml(row.transcript_en)}</div>
+        ${showOriginal ? `<div class="card-label transcript-original-label">Original language</div><div class="transcript-original-text">${escapeHtml(row.transcript)}</div>` : ''}
+      `;
+    }
+    return `
+      <button class="btn btn-transcribe" id="btn-transcribe">Transcribe &amp; translate</button>
+      <div class="transcribe-note">Uses OpenAI Whisper to transcribe the story in its original language and translate it to English. Costs a small amount per story — that's why this runs on demand instead of automatically.</div>
+    `;
+  }
+
+  async function transcribeStory(row) {
+    const btn = document.getElementById('btn-transcribe');
+    const note = document.querySelector('.transcribe-note');
+    btn.disabled = true;
+    btn.textContent = 'Transcribing…';
+    if (note) note.textContent = 'This can take up to a minute.';
+
+    const { data, error } = await supabaseClient.functions.invoke('transcribe-story', {
+      body: { submissionId: row.id },
+    });
+
+    if (error || !data || !data.transcript_en) {
+      btn.disabled = false;
+      btn.textContent = 'Transcribe & translate';
+      if (note) note.textContent = "Couldn't transcribe this one — try again in a moment.";
+      return;
+    }
+
+    row.transcript = data.transcript;
+    row.transcript_en = data.transcript_en;
+    document.getElementById('transcript-content').innerHTML = transcriptCardHtml(row);
+  }
+
   async function openDetail(row) {
     activeRow = row;
     document.getElementById('detail-title').textContent = 'Submission #' + row.id.slice(0, 6);
@@ -365,6 +409,10 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-label">Story transcript</div>
+        <div id="transcript-content">${transcriptCardHtml(row)}</div>
+      </div>
+      <div class="card">
         <div class="card-label">Contact</div>
         ${contactRows.join('') || '<div class="contact-row"><span class="val" style="color:var(--muted);">No contact details</span></div>'}
       </div>
@@ -382,6 +430,9 @@
       </div>
       ${statusNote}
     `;
+
+    const transcribeBtn = document.getElementById('btn-transcribe');
+    if (transcribeBtn) transcribeBtn.addEventListener('click', () => transcribeStory(row));
 
     body.querySelectorAll('.copy-btn').forEach(btn => {
       btn.addEventListener('click', async () => {

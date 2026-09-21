@@ -13,6 +13,8 @@ create table if not exists public.submissions (
   email text,
   instagram text,
   found_location text,
+  transcript text,
+  transcript_en text,
   consent text not null check (consent in ('private', 'feature')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   constraint at_least_one_contact check (

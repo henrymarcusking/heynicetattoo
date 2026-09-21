@@ -102,6 +102,47 @@ Supabase Edge Function, triggered by a Database Webhook, and sends through
 That's it — every new submission (regardless of what contact details or
 consent choice someone left) triggers one email to `heynicetattoo@gmail.com`.
 
+## On-demand story transcription
+
+`supabase/functions/transcribe-story/index.ts` is called directly from the
+review queue — a "Transcribe & translate" button on each submission's audio,
+rather than something that runs automatically. It sends the audio to
+[OpenAI's Whisper API](https://platform.openai.com/docs/guides/speech-to-text),
+which returns both a transcript in whatever language the story was told in
+and an English translation, and saves both onto the submission. Costs a
+small amount per story (Whisper is priced per minute of audio) — the whole
+point of making this a button instead of automatic is that cost and effort
+track what you actually review, not everything that comes in.
+
+Because it's called directly by the review queue rather than triggered by
+the database, there's no webhook step this time — just:
+
+1. **Add your existing database columns** (only needed once, on a project
+   that was set up before this feature existed — a fresh install via
+   `supabase-setup.sql` already includes these). In the SQL editor:
+
+   ```sql
+   alter table public.submissions add column if not exists transcript text;
+   alter table public.submissions add column if not exists transcript_en text;
+   ```
+
+2. **Get an OpenAI API key** at [platform.openai.com](https://platform.openai.com/api-keys)
+   (you'll need a card on file — Whisper isn't part of any free tier, but
+   it's inexpensive per use).
+
+3. **Add it as a Supabase secret** — **Edge Functions → Manage secrets**:
+
+   ```
+   OPENAI_API_KEY = <your OpenAI API key>
+   ```
+
+4. **Create the function** — **Edge Functions → Create a function**, name
+   it `transcribe-story`, and paste in the contents of
+   `supabase/functions/transcribe-story/index.ts`.
+
+No webhook needed — the review queue calls this function directly when you
+click the button, and only a signed-in reviewer can trigger it.
+
 ## Notes on the audio recording
 
 Recording uses the browser's `MediaRecorder` API, which is broadly supported
