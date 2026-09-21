@@ -1,4 +1,4 @@
-# Ink Stories
+# heynicetattoo
 
 A QR-code-driven flow for collecting tattoo photos, the audio story behind them,
 and (optionally) contact details for follow-up — plus a small internal tool for

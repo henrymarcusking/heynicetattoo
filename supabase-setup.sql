@@ -1,4 +1,4 @@
--- Ink Stories — Supabase schema, storage, and RLS setup.
+-- heynicetattoo — Supabase schema, storage, and RLS setup.
 -- Run this once, in full, in your Supabase project's SQL editor
 -- (Dashboard → SQL Editor → New query) for a fresh project.
 
