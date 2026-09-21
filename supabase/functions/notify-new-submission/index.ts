@@ -8,7 +8,7 @@
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const NOTIFY_EMAIL = "heynicetattoo@gmail.com";
-const ADMIN_URL = "https://henrymarcusking.github.io/inkstories/admin.html";
+const ADMIN_URL = "https://henrymarcusking.github.io/heynicetattoo/admin.html";
 
 Deno.serve(async (req) => {
   try {
