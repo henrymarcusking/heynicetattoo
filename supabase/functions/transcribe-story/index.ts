@@ -68,10 +68,15 @@ Deno.serve(async (req) => {
     const audioBlob = await audioRes.blob();
     const filename = row.audio_path.split("/").pop() || "audio.webm";
 
-    async function callWhisper(endpoint: "transcriptions" | "translations") {
+    async function callWhisper(
+      endpoint: "transcriptions" | "translations",
+      opts: { language?: string; verbose?: boolean } = {},
+    ) {
       const form = new FormData();
       form.append("file", audioBlob, filename);
       form.append("model", "whisper-1");
+      if (opts.language) form.append("language", opts.language);
+      if (opts.verbose) form.append("response_format", "verbose_json");
       const res = await fetch(`https://api.openai.com/v1/audio/${endpoint}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
@@ -80,16 +85,23 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         throw new Error(`Whisper ${endpoint} failed: ${await res.text()}`);
       }
-      const data = await res.json();
-      return data.text as string;
+      return await res.json();
     }
 
     // Original-language transcript and English translation — one at a time,
-    // not in parallel. Running both at once means holding two simultaneous
-    // multipart uploads of the same audio file in memory, which is enough
-    // to trip the function's resource limit even for a short clip.
-    const transcript = await callWhisper("transcriptions");
-    const transcriptEn = await callWhisper("translations");
+    // not in parallel (see note below on memory). Translate first, with
+    // verbose output so Whisper tells us what source language it detected
+    // — that endpoint seems to identify the language more reliably than
+    // transcription does on its own — then pass that as an explicit hint
+    // to the transcription call. Without it, transcription occasionally
+    // guesses the wrong source language for less common ones and produces
+    // garbled text, even though the translation comes out fine.
+    const translationResult = await callWhisper("translations", { verbose: true });
+    const transcriptEn = translationResult.text as string;
+    const detectedLanguage = translationResult.language as string | undefined;
+
+    const transcriptionResult = await callWhisper("transcriptions", { language: detectedLanguage });
+    const transcript = transcriptionResult.text as string;
 
     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/submissions?id=eq.${submissionId}`, {
       method: "PATCH",
