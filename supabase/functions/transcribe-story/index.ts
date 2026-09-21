@@ -84,11 +84,12 @@ Deno.serve(async (req) => {
       return data.text as string;
     }
 
-    // Original-language transcript and English translation, in parallel.
-    const [transcript, transcriptEn] = await Promise.all([
-      callWhisper("transcriptions"),
-      callWhisper("translations"),
-    ]);
+    // Original-language transcript and English translation — one at a time,
+    // not in parallel. Running both at once means holding two simultaneous
+    // multipart uploads of the same audio file in memory, which is enough
+    // to trip the function's resource limit even for a short clip.
+    const transcript = await callWhisper("transcriptions");
+    const transcriptEn = await callWhisper("translations");
 
     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/submissions?id=eq.${submissionId}`, {
       method: "PATCH",
