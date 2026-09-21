@@ -15,6 +15,28 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
+// Whisper's verbose_json response names the detected language in full
+// ("swedish"), but the transcriptions endpoint's `language` parameter
+// only accepts ISO-639-1 codes ("sv") — passing the full name back in
+// fails with `invalid_language_format`. This maps Whisper's own output
+// vocabulary (its documented supported-language list) to those codes.
+const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
+  afrikaans: "af", arabic: "ar", armenian: "hy", azerbaijani: "az",
+  belarusian: "be", bosnian: "bs", bulgarian: "bg", catalan: "ca",
+  chinese: "zh", croatian: "hr", czech: "cs", danish: "da", dutch: "nl",
+  english: "en", estonian: "et", finnish: "fi", french: "fr",
+  galician: "gl", german: "de", greek: "el", hebrew: "he", hindi: "hi",
+  hungarian: "hu", icelandic: "is", indonesian: "id", italian: "it",
+  japanese: "ja", kannada: "kn", kazakh: "kk", korean: "ko",
+  latvian: "lv", lithuanian: "lt", macedonian: "mk", malay: "ms",
+  marathi: "mr", maori: "mi", nepali: "ne", norwegian: "no",
+  persian: "fa", polish: "pl", portuguese: "pt", romanian: "ro",
+  russian: "ru", serbian: "sr", slovak: "sk", slovenian: "sl",
+  spanish: "es", swahili: "sw", swedish: "sv", tagalog: "tl",
+  tamil: "ta", thai: "th", turkish: "tr", ukrainian: "uk", urdu: "ur",
+  vietnamese: "vi", welsh: "cy",
+};
+
 function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin || "*",
@@ -98,9 +120,10 @@ Deno.serve(async (req) => {
     // garbled text, even though the translation comes out fine.
     const translationResult = await callWhisper("translations", { verbose: true });
     const transcriptEn = translationResult.text as string;
-    const detectedLanguage = translationResult.language as string | undefined;
+    const detectedLanguageName = (translationResult.language as string | undefined)?.toLowerCase();
+    const detectedLanguageCode = detectedLanguageName ? LANGUAGE_NAME_TO_CODE[detectedLanguageName] : undefined;
 
-    const transcriptionResult = await callWhisper("transcriptions", { language: detectedLanguage });
+    const transcriptionResult = await callWhisper("transcriptions", { language: detectedLanguageCode });
     const transcript = transcriptionResult.text as string;
 
     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/submissions?id=eq.${submissionId}`, {
