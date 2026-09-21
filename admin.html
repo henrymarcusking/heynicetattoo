@@ -102,6 +102,9 @@
 
   .btn-transcribe { height: 38px; padding: 0 16px; background: var(--blue-tint); color: var(--blue); }
   .btn-transcribe:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-retranscribe { margin-top: 14px; height: 30px; padding: 0 4px; background: none; border: none; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .btn-retranscribe:hover { color: var(--blue); }
+  .btn-retranscribe:disabled { opacity: 0.6; cursor: not-allowed; }
   .transcribe-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
   .transcript-en { font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
   .transcript-original-label { margin-top: 14px; }
@@ -337,17 +340,20 @@
       return `
         <div class="transcript-en">${escapeHtml(row.transcript_en)}</div>
         ${showOriginal ? `<div class="card-label transcript-original-label">Original language</div><div class="transcript-original-text">${escapeHtml(row.transcript)}</div>` : ''}
+        <button class="btn-retranscribe" id="btn-transcribe">Re-transcribe &amp; translate</button>
+        <div class="transcribe-note"></div>
       `;
     }
     return `
       <button class="btn btn-transcribe" id="btn-transcribe">Transcribe &amp; translate</button>
-      <div class="transcribe-note">Uses OpenAI Whisper to transcribe the story in its original language and translate it to English. Costs a small amount per story — that's why this runs on demand instead of automatically.</div>
+      <div class="transcribe-note">Transcribes the story in its original language and translates it to English. Costs a small amount per story — that's why this runs on demand instead of automatically.</div>
     `;
   }
 
   async function transcribeStory(row) {
     const btn = document.getElementById('btn-transcribe');
     const note = document.querySelector('.transcribe-note');
+    const label = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Transcribing…';
     if (note) note.textContent = 'This can take up to a minute.';
@@ -365,13 +371,13 @@
         }
       } catch (e) { /* fall back to error.message above */ }
       btn.disabled = false;
-      btn.textContent = 'Transcribe & translate';
+      btn.textContent = label;
       if (note) note.textContent = detail;
       return;
     }
     if (!data || !data.transcript_en) {
       btn.disabled = false;
-      btn.textContent = 'Transcribe & translate';
+      btn.textContent = label;
       if (note) note.textContent = 'No transcript came back — try again in a moment.';
       return;
     }
@@ -379,6 +385,8 @@
     row.transcript = data.transcript;
     row.transcript_en = data.transcript_en;
     document.getElementById('transcript-content').innerHTML = transcriptCardHtml(row);
+    const newBtn = document.getElementById('btn-transcribe');
+    if (newBtn) newBtn.addEventListener('click', () => transcribeStory(row));
   }
 
   async function openDetail(row) {
