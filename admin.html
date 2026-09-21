@@ -356,10 +356,23 @@
       body: { submissionId: row.id },
     });
 
-    if (error || !data || !data.transcript_en) {
+    if (error) {
+      let detail = error.message || String(error);
+      try {
+        if (error.context && typeof error.context.text === 'function') {
+          const bodyText = await error.context.text();
+          if (bodyText) detail = bodyText;
+        }
+      } catch (e) { /* fall back to error.message above */ }
       btn.disabled = false;
       btn.textContent = 'Transcribe & translate';
-      if (note) note.textContent = "Couldn't transcribe this one — try again in a moment.";
+      if (note) note.textContent = detail;
+      return;
+    }
+    if (!data || !data.transcript_en) {
+      btn.disabled = false;
+      btn.textContent = 'Transcribe & translate';
+      if (note) note.textContent = 'No transcript came back — try again in a moment.';
       return;
     }
 
