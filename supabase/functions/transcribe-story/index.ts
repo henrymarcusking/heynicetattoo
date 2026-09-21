@@ -133,7 +133,12 @@ Deno.serve(async (req) => {
     ) {
       const form = new FormData();
       form.append("file", audioBlob, filename);
-      form.append("model", "whisper-1");
+      // /translations only supports whisper-1. /transcriptions can use the
+      // newer gpt-4o-mini-transcribe model, which — unlike whisper-1's
+      // original multitask checkpoint — reliably respects the "transcribe,
+      // don't translate" task instead of occasionally translating to
+      // English on its own regardless of the language hint or prompt.
+      form.append("model", endpoint === "translations" ? "whisper-1" : "gpt-4o-mini-transcribe");
       if (opts.language) form.append("language", opts.language);
       if (opts.prompt) form.append("prompt", opts.prompt);
       if (opts.verbose) form.append("response_format", "verbose_json");
