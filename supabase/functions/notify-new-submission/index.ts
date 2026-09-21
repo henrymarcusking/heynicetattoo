@@ -1,4 +1,4 @@
-// Ink Stories — new-submission email notification.
+// heynicetattoo — new-submission email notification.
 //
 // Fired by a Supabase Database Webhook on INSERT into public.submissions.
 // Sends a plain notice (no personal details) to a fixed address, pointing
@@ -25,9 +25,9 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Ink Stories <onboarding@resend.dev>",
+        from: "heynicetattoo <onboarding@resend.dev>",
         to: NOTIFY_EMAIL,
-        subject: "New Ink Stories submission",
+        subject: "New heynicetattoo submission",
         text: `A new story just came in.\n\nConsent: ${consent}\nSubmitted: ${submittedAt}\n\nReview it here: ${ADMIN_URL}`,
       }),
     });
