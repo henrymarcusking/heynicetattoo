@@ -18,7 +18,7 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin || "*",
-    "Access-Control-Allow-Headers": "authorization, content-type, apikey",
+    "Access-Control-Allow-Headers": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
