@@ -37,6 +37,43 @@ const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
   vietnamese: "vi", welsh: "cy",
 };
 
+// Even with `language` set, Whisper's transcriptions endpoint sometimes
+// translates to English anyway instead of transcribing (seen on clean,
+// fluent-sounding audio) — the language param is only a soft hint. A
+// short prompt in the target language gives the decoder prior context
+// to continue from, which biases it much more strongly toward staying
+// in that language. Covers the languages this app is likely to see;
+// unmapped languages just get the bare language hint as before.
+const PROMPT_BY_LANGUAGE_CODE: Record<string, string> = {
+  fr: "Ceci est la transcription d'une histoire racontée à voix haute.",
+  de: "Dies ist die Abschrift einer laut erzählten Geschichte.",
+  es: "Esta es la transcripción de una historia contada en voz alta.",
+  it: "Questa è la trascrizione di una storia raccontata ad alta voce.",
+  pt: "Esta é a transcrição de uma história contada em voz alta.",
+  nl: "Dit is de transcriptie van een hardop verteld verhaal.",
+  sv: "Detta är transkriptionen av en berättelse som berättas högt.",
+  no: "Dette er transkripsjonen av en historie fortalt høyt.",
+  da: "Dette er transskriptionen af en historie fortalt højt.",
+  fi: "Tämä on ääneen kerrotun tarinan litterointi.",
+  pl: "To jest transkrypcja opowieści opowiedzianej na głos.",
+  cs: "Toto je přepis příběhu vyprávěného nahlas.",
+  sk: "Toto je prepis príbehu rozprávaného nahlas.",
+  ro: "Aceasta este transcrierea unei povești spuse cu voce tare.",
+  hu: "Ez egy hangosan elmesélt történet átirata.",
+  el: "Αυτή είναι η απομαγνητοφώνηση μιας ιστορίας που ειπώθηκε δυνατά.",
+  ru: "Это расшифровка истории, рассказанной вслух.",
+  uk: "Це розшифровка історії, розказаної вголос.",
+  tr: "Bu, sesli anlatılan bir hikayenin transkripsiyonudur.",
+  ar: "هذا نسخ لقصة رويت بصوت عالٍ.",
+  he: "זהו תמלול של סיפור שסופר בקול רם.",
+  hi: "यह ज़ोर से सुनाई गई कहानी का प्रतिलेखन है।",
+  ja: "これは声に出して語られた物語の書き起こしです。",
+  ko: "이것은 소리 내어 말한 이야기의 대본입니다.",
+  zh: "这是大声讲述的故事的转录。",
+  vi: "Đây là bản ghi lại một câu chuyện được kể to.",
+  id: "Ini adalah transkripsi dari sebuah cerita yang diceritakan dengan lantang.",
+};
+
 function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin || "*",
@@ -92,12 +129,13 @@ Deno.serve(async (req) => {
 
     async function callWhisper(
       endpoint: "transcriptions" | "translations",
-      opts: { language?: string; verbose?: boolean } = {},
+      opts: { language?: string; prompt?: string; verbose?: boolean } = {},
     ) {
       const form = new FormData();
       form.append("file", audioBlob, filename);
       form.append("model", "whisper-1");
       if (opts.language) form.append("language", opts.language);
+      if (opts.prompt) form.append("prompt", opts.prompt);
       if (opts.verbose) form.append("response_format", "verbose_json");
       const res = await fetch(`https://api.openai.com/v1/audio/${endpoint}`, {
         method: "POST",
@@ -123,7 +161,11 @@ Deno.serve(async (req) => {
     const detectedLanguageName = (translationResult.language as string | undefined)?.toLowerCase();
     const detectedLanguageCode = detectedLanguageName ? LANGUAGE_NAME_TO_CODE[detectedLanguageName] : undefined;
 
-    const transcriptionResult = await callWhisper("transcriptions", { language: detectedLanguageCode });
+    const transcriptionPrompt = detectedLanguageCode ? PROMPT_BY_LANGUAGE_CODE[detectedLanguageCode] : undefined;
+    const transcriptionResult = await callWhisper("transcriptions", {
+      language: detectedLanguageCode,
+      prompt: transcriptionPrompt,
+    });
     const transcript = transcriptionResult.text as string;
 
     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/submissions?id=eq.${submissionId}`, {
